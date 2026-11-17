@@ -310,28 +310,24 @@
         return retenus.map(function (x) { return x.m; });
     }
 
-    /* Regroupe les opérations du même type et de la même heure : « Bennes copeaux ×3 · 14 h ». */
-    function operationsRegroupees() {
+    /* Une ligne par opération : pas de regroupement, chaque appui reste visible. */
+    function operationsFiltrees() {
         var debut = debutPeriode();
         var texte = recherche.trim().toLowerCase();
-        var groupes = {};
 
-        operations.elements.forEach(function (o, index) {
-            if (jourDe(o.ts) < debut) return;
-            if (texte && (o.type + " " + dateLisible(o.ts)).toLowerCase().indexOf(texte) < 0) return;
+        var retenues = operations.elements.map(function (o, index) { return { o: o, index: index }; })
+            .filter(function (x) {
+                if (jourDe(x.o.ts) < debut) return false;
+                if (!texte) return true;
+                return (x.o.type + " " + dateLisible(x.o.ts)).toLowerCase().indexOf(texte) >= 0;
+            });
 
-            var cle = o.type + "|" + o.ts.substring(0, 13);
-            if (!groupes[cle]) groupes[cle] = { type: o.type, ts: o.ts, elements: [], ordre: index };
-            groupes[cle].elements.push(o);
-            if (o.ts > groupes[cle].ts) groupes[cle].ts = o.ts;
-            if (index > groupes[cle].ordre) groupes[cle].ordre = index;
+        retenues.sort(function (a, b) {
+            if (a.o.ts !== b.o.ts) return a.o.ts < b.o.ts ? 1 : -1;
+            return b.index - a.index;
         });
 
-        return Object.keys(groupes).map(function (cle) {
-            var groupe = groupes[cle];
-            groupe.elements.sort(function (a, b) { return a.ts < b.ts ? -1 : 1; });
-            return groupe;
-        });
+        return retenues;
     }
 
     function elementsHistorique() {
@@ -341,8 +337,8 @@
             elements.push({ genre: "mouvement", ts: m.ts, ordre: donnees.mouvements.indexOf(m), mouvement: m });
         });
 
-        operationsRegroupees().forEach(function (groupe) {
-            elements.push({ genre: "operations", ts: groupe.ts, ordre: groupe.ordre, groupe: groupe });
+        operationsFiltrees().forEach(function (x) {
+            elements.push({ genre: "operation", ts: x.o.ts, ordre: x.index, operation: x.o });
         });
 
         return elements.sort(function (a, b) {
@@ -360,8 +356,8 @@
         vide.classList.toggle("cache", elements.length > 0);
 
         elements.forEach(function (element) {
-            conteneur.appendChild(element.genre === "operations"
-                ? carteOperations(element.groupe)
+            conteneur.appendChild(element.genre === "operation"
+                ? carteOperation(element.operation)
                 : carteMouvement(element.mouvement));
         });
     }
@@ -419,31 +415,24 @@
         return bouton;
     }
 
-    function carteOperations(groupe) {
+    function carteOperation(o) {
         var bouton = document.createElement("button");
         bouton.type = "button";
-        bouton.className = "element grp-operation";
+        bouton.className = "element element-operation";
 
         var corps = document.createElement("div");
         corps.className = "corps";
 
         var horaire = document.createElement("div");
         horaire.className = "horaire";
-        horaire.textContent = dateLisible(groupe.ts) + "  ·  " + heureLisible(groupe.ts).substring(0, 2) + " h";
+        horaire.textContent = dateLisible(o.ts) + "  ·  " + heureLisible(o.ts);
 
         var titre = document.createElement("div");
         titre.className = "trajet";
-        titre.textContent = groupe.type + " ×" + groupe.elements.length;
-
-        var temps = document.createElement("div");
-        temps.className = "sous-temps";
-        temps.textContent = groupe.elements.map(function (o) {
-            return heureLisible(o.ts).substring(0, 5);
-        }).join("  ·  ");
+        titre.textContent = o.type;
 
         corps.appendChild(horaire);
         corps.appendChild(titre);
-        corps.appendChild(temps);
 
         var chevron = document.createElement("span");
         chevron.className = "chevron";
@@ -451,7 +440,7 @@
 
         bouton.appendChild(corps);
         bouton.appendChild(chevron);
-        bouton.addEventListener("click", function () { ouvrirDetailOperations(groupe); });
+        bouton.addEventListener("click", function () { ouvrirDetailOperation(o); });
 
         return bouton;
     }
@@ -468,44 +457,35 @@
         return ligne;
     }
 
-    function ouvrirDetailOperations(groupe) {
-        ouvrirFeuille("Opérations", function (contenu) {
+    function ouvrirDetailOperation(o) {
+        ouvrirFeuille("Opération", function (contenu) {
             var detail = document.createElement("div");
             detail.className = "detail";
-            detail.appendChild(ligneDetail("Type", groupe.type));
-            detail.appendChild(ligneDetail("Date", dateLisible(groupe.ts)));
-            detail.appendChild(ligneDetail("Nombre", groupe.elements.length +
-                (groupe.elements.length === 1 ? " unité" : " unités")));
+            detail.appendChild(ligneDetail("Type", o.type));
+            detail.appendChild(ligneDetail("Date", dateLisible(o.ts)));
+            detail.appendChild(ligneDetail("Heure", heureLisible(o.ts)));
             contenu.appendChild(detail);
 
-            groupe.elements.forEach(function (o) {
-                var ligne = document.createElement("div");
-                ligne.className = "ligne-operation";
+            var actions = document.createElement("div");
+            actions.className = "actions";
 
-                var heure = document.createElement("span");
-                heure.className = "heure-op";
-                heure.textContent = heureLisible(o.ts);
+            var retirer = document.createElement("button");
+            retirer.type = "button";
+            retirer.className = "secondaire danger-texte";
+            retirer.textContent = "Retirer cette opération";
+            retirer.addEventListener("click", function () {
+                if (!confirm("Retirer l'opération « " + o.type + " » de " + heureLisible(o.ts).substring(0, 5) + " ?")) return;
 
-                var retirer = document.createElement("button");
-                retirer.type = "button";
-                retirer.className = "retirer";
-                retirer.textContent = "✕";
-                retirer.setAttribute("aria-label", "Retirer cette opération");
-                retirer.addEventListener("click", function () {
-                    if (!confirm("Retirer l'opération de " + heureLisible(o.ts).substring(0, 5) + " ?")) return;
-
-                    operations.elements = operations.elements.filter(function (x) { return x.id !== o.id; });
-                    sauverOperations();
-                    fermerFeuille();
-                    rendreOperations();
-                    rendreHistorique();
-                    afficherToast("Opération retirée.");
-                });
-
-                ligne.appendChild(heure);
-                ligne.appendChild(retirer);
-                contenu.appendChild(ligne);
+                operations.elements = operations.elements.filter(function (x) { return x.id !== o.id; });
+                sauverOperations();
+                fermerFeuille();
+                rendreOperations();
+                rendreHistorique();
+                afficherToast("Opération retirée.");
             });
+
+            actions.appendChild(retirer);
+            contenu.appendChild(actions);
         });
     }
 

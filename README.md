@@ -9,8 +9,8 @@ l'historique, une liste de tâches, des opérations rapides (+1) et l'envoi du r
 Sept boutons « +1 » sur l'écran Saisir : palettes vides, benne ferraille, rehausses, chutes,
 ferraille, bennes copeaux, bois. Chaque appui enregistre une unité avec l'heure exacte.
 
-Dans l'historique, les unités du **même type et de la même heure** sont regroupées
-(`Bennes copeaux ×3 · 14 h`). Le détail de la ligne permet de retirer une unité saisie par erreur.
+Dans l'historique, chaque appui apparaît sur **sa propre ligne**, avec l'heure exacte.
+Le détail de la ligne permet de retirer une unité saisie par erreur.
 
 Dans l'export, chaque unité devient une ligne avec la colonne **Opération** renseignée
 (les mouvements gardent cette colonne vide).
@@ -65,6 +65,6 @@ node ..\webtest\test.cjs <adresse> <dossier-images>  # parcours complet (Playwri
 
 Le parcours automatisé vérifie : 15 lieux, blocage du lieu identique, activation du bouton,
 confirmation, réinitialisation, historique, recherche, modification, statistiques, export,
-opérations rapides (ajout, regroupement par heure, retrait d'une unité),
+opérations rapides (ajout, une ligne par appui, retrait d'une unité),
 tâches (ajout, cocher, décocher, filtres, suppression), persistance après rechargement et
 fonctionnement hors réseau.
