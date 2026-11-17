@@ -7,7 +7,7 @@
     var CLE = "suiviPalettes.v1";
     var CLE_TACHES = "suiviTaches.v1";
     var CLE_OPERATIONS = "suiviOperations.v1";
-    var VERSION = 25;
+    var VERSION = 26;
 
     var TYPES_OPERATIONS = ["Palettes vides", "Benne ferraille", "Rehausses", "Chutes",
         "Ferraille", "Bennes copeaux", "Bois"];
