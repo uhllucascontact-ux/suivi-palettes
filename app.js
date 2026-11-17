@@ -1117,18 +1117,32 @@
         }
 
         document.getElementById("btn-vider").addEventListener("click", function () {
-            if (donnees.mouvements.length === 0) {
+            var nbMouvements = donnees.mouvements.length;
+            var nbOperations = operations.elements.length;
+            var nbTaches = taches.elements.length;
+
+            if (nbMouvements + nbOperations + nbTaches === 0) {
                 afficherToast("Aucune donnée à effacer.", true);
                 return;
             }
-            if (!confirm("Effacer TOUS les mouvements de ce téléphone ? Cette action est définitive.")) return;
-            if (!confirm("Confirmez une dernière fois : les données seront perdues si vous n'avez pas exporté.")) return;
+
+            var resume = nbMouvements + " mouvement(s), " + nbOperations + " opération(s), " + nbTaches + " tâche(s)";
+            if (!confirm("Effacer TOUTES les données de ce téléphone ?\n\n" + resume + "\n\nCette action est définitive.")) return;
+            if (!confirm("Confirmez une dernière fois : si vous n'avez pas exporté, les mouvements seront perdus.")) return;
 
             donnees.mouvements = [];
             donnees.dernierExport = null;
+            operations.elements = [];
+            taches.elements = [];
+
             sauver();
+            sauverOperations();
+            sauverTaches();
+
             rendreSaisie();
             rendreHistorique();
+            rendreTaches();
+            rendreOperations();
             rendreDonnees();
             afficherToast("Toutes les données ont été effacées.");
         });
