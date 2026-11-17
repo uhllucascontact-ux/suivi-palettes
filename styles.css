@@ -540,7 +540,7 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
     display: flex;
     background: #FFFFFF;
     border-top: 1px solid var(--bordure);
-    padding-bottom: max(0px, calc(env(safe-area-inset-bottom) - 12px));
+    padding-bottom: max(6px, calc(env(safe-area-inset-bottom) - 20px));
 }
 
 /* Peint en blanc la zone située sous le menu (barre du bas de l'iPhone),
@@ -560,7 +560,7 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
     flex: 1;
     border: none;
     background: transparent;
-    padding: 6px 0 4px;
+    padding: 6px 0 3px;
     font-family: inherit;
     font-size: 10px;
     font-weight: 600;
@@ -569,7 +569,7 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    min-height: 54px;
+    min-height: 52px;
 }
 
 .onglets button .icone { font-size: 20px; line-height: 1; }
