@@ -7,6 +7,7 @@
     var CLE = "suiviPalettes.v1";
     var CLE_TACHES = "suiviTaches.v1";
     var CLE_OPERATIONS = "suiviOperations.v1";
+    var VERSION = 14;
 
     var TYPES_OPERATIONS = ["Palettes vides", "Benne ferraille", "Rehausses", "Chutes",
         "Ferraille", "Bennes copeaux", "Bois"];
@@ -1116,8 +1117,32 @@
             });
         }
 
-        document.getElementById("btn-vider").addEventListener("click", function () {
-            var nbMouvements = donnees.mouvements.length;
+        document.getElementById("version-app").textContent = "Version " + VERSION + " de l'application.";
+
+        document.getElementById("btn-maj").addEventListener("click", function () {
+            if (!confirm("Recharger l'application pour récupérer la dernière version ?\n\nVos mouvements, opérations et tâches ne sont pas concernés.")) return;
+
+            var recharger = function () { location.reload(); };
+
+            try {
+                var attentes = [];
+                if (window.caches) {
+                    attentes.push(caches.keys().then(function (cles) {
+                        return Promise.all(cles.map(function (c) { return caches.delete(c); }));
+                    }));
+                }
+                if (navigator.serviceWorker) {
+                    attentes.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                        return Promise.all(regs.map(function (r) { return r.unregister(); }));
+                    }));
+                }
+                Promise.all(attentes).then(recharger).catch(recharger);
+            } catch (e) {
+                recharger();
+            }
+        });
+
+        document.getElementById("btn-vider").addEventListener("click", function () {            var nbMouvements = donnees.mouvements.length;
             var nbOperations = operations.elements.length;
             var nbTaches = taches.elements.length;
 
@@ -1163,7 +1188,16 @@
         setInterval(majHorloge, 1000);
 
         if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("sw.js").catch(function (e) {
+            var avaitControleur = !!navigator.serviceWorker.controller;
+
+            navigator.serviceWorker.addEventListener("controllerchange", function () {
+                if (!avaitControleur) return;
+                afficherToast("Mise à jour prête : fermez puis rouvrez l'application.", false);
+            });
+
+            navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (enregistrement) {
+                enregistrement.update();
+            }).catch(function (e) {
                 console.warn("Mode hors ligne indisponible", e);
             });
         }

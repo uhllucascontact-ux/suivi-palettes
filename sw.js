@@ -1,6 +1,8 @@
-/* Cache local : permet d'ouvrir l'application sans réseau après la première visite. */
+/* Cache local : permet d'ouvrir l'application sans réseau.
+   Stratégie « réseau d'abord » : dès qu'il y a du réseau, la dernière version est utilisée.
+   Le cache ne sert que de secours hors connexion. */
 
-var CACHE = "suivi-palettes-v13";
+var CACHE = "suivi-palettes-v14";
 var FICHIERS = [
     "./",
     "./index.html",
@@ -41,19 +43,17 @@ self.addEventListener("fetch", function (evenement) {
     if (evenement.request.method !== "GET") return;
 
     evenement.respondWith(
-        caches.match(evenement.request).then(function (reponse) {
-            if (reponse) return reponse;
-
-            return fetch(evenement.request).then(function (reseau) {
-                if (reseau && reseau.status === 200 && reseau.type === "basic") {
-                    var copie = reseau.clone();
-                    caches.open(CACHE).then(function (cache) {
-                        cache.put(evenement.request, copie);
-                    });
-                }
-                return reseau;
-            }).catch(function () {
-                return caches.match("./index.html");
+        fetch(evenement.request).then(function (reponse) {
+            if (reponse && reponse.status === 200 && reponse.type === "basic") {
+                var copie = reponse.clone();
+                caches.open(CACHE).then(function (cache) {
+                    cache.put(evenement.request, copie);
+                });
+            }
+            return reponse;
+        }).catch(function () {
+            return caches.match(evenement.request).then(function (enCache) {
+                return enCache || caches.match("./index.html");
             });
         })
     );
