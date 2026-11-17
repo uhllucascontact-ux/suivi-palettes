@@ -26,15 +26,23 @@ html, body {
     -webkit-text-size-adjust: 100%;
 }
 
+html { height: 100%; }
+
+/* Mise en page pleine hauteur : seul <main> défile, le menu reste collé en bas
+   quel que soit le contenu de l'onglet (comportement iOS compris). */
 body {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
-    overscroll-behavior-y: contain;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
 }
 
 /* ============ En-tête ============ */
 .entete {
-    position: sticky;
-    top: 0;
+    flex: none;
+    position: relative;
     z-index: 20;
     display: flex;
     justify-content: space-between;
@@ -65,7 +73,15 @@ body {
 .compteur { font-size: 11px; color: #B9C7D0; }
 
 /* ============ Vues ============ */
-main { padding: 16px 16px 8px; }
+main {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 16px 16px 12px;
+}
+
 .vue { display: flex; flex-direction: column; gap: 12px; }
 .cache { display: none !important; }
 
@@ -230,8 +246,7 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 
 /* L'écran de saisie occupe la hauteur : le bouton reste à portée du pouce. */
 #vue-saisie {
-    min-height: calc(100vh - 200px);
-    min-height: calc(100dvh - 200px);
+    min-height: 100%;
 }
 
 #vue-saisie .principal { margin-top: auto; }
@@ -323,6 +338,78 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 .element .chevron { color: #B6C1C9; font-size: 22px; }
 
 .vide { text-align: center; color: var(--doux); font-size: 14px; padding: 24px 0; }
+
+/* ============ Statistiques en graphique ============ */
+.entete-graphique {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.legende {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--doux);
+}
+
+.pastille {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+}
+
+.pastille.mouvements { background: var(--accent); }
+.pastille.operations { background: #3A7CA5; margin-left: 8px; }
+
+.graphique {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 152px;
+    padding-top: 6px;
+    overflow-x: auto;
+}
+
+.colonne {
+    flex: 1 0 24px;
+    min-width: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    background: none;
+    padding: 0;
+    font-family: inherit;
+}
+
+.barres {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 122px;
+}
+
+.barre {
+    width: 9px;
+    border-radius: 3px 3px 0 0;
+    background: var(--accent);
+}
+
+.barre.operations { background: #3A7CA5; }
+.barre.vide { background: #E7EDF1; }
+
+.etiquette-colonne {
+    font-size: 9px;
+    color: var(--doux);
+    white-space: nowrap;
+}
 
 /* ============ Opérations rapides ============ */
 .grille-operations {
@@ -481,10 +568,8 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 
 /* ============ Navigation basse ============ */
 .onglets {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    flex: none;
+    position: relative;
     z-index: 30;
     display: flex;
     background: rgba(255, 255, 255, .97);

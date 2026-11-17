@@ -1,8 +1,8 @@
 # Version mobile de test (iPhone)
 
 Version web de test, à ouvrir dans Safari sur l'iPhone. Elle reprend l'écran de saisie,
-l'historique, une liste de tâches, des opérations rapides (+1) et l'envoi du relevé par mail
-(Gmail ou Mail).
+l'historique, une liste de tâches, des opérations rapides (+1), des statistiques par
+jour/semaine/mois/année et l'envoi du relevé par mail (Gmail ou Mail).
 
 ## Opérations rapides
 

@@ -1,4 +1,4 @@
-/* Application mobile de test — enregistrement local sur le téléphone.
+﻿/* Application mobile de test — enregistrement local sur le téléphone.
    Aucune donnée n'est envoyée sur Internet : seul l'export par mail sort du téléphone. */
 
 (function () {
@@ -7,7 +7,7 @@
     var CLE = "suiviPalettes.v1";
     var CLE_TACHES = "suiviTaches.v1";
     var CLE_OPERATIONS = "suiviOperations.v1";
-    var VERSION = 14;
+    var VERSION = 17;
 
     var TYPES_OPERATIONS = ["Palettes vides", "Benne ferraille", "Rehausses", "Chutes",
         "Ferraille", "Bennes copeaux", "Bois"];
@@ -30,6 +30,7 @@
     var taches = { version: 1, elements: [] };
     var filtreTaches = "toutes";
     var operations = { version: 1, elements: [] };
+    var grainStats = "jour";
 
     // ---------------------------------------------------------------- stockage
 
@@ -834,6 +835,154 @@
         afficherToast("Tâche supprimée.");
     }
 
+    // ---------------------------------------------------------------- statistiques
+
+    function lundiDe(date) {
+        var jour = (date.getDay() + 6) % 7;
+        var lundi = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        lundi.setDate(lundi.getDate() - jour);
+        return lundi;
+    }
+
+    function numeroSemaine(date) {
+        var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        var jour = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - jour);
+        var debutAnnee = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil(((d - debutAnnee) / 86400000 + 1) / 7);
+    }
+
+    function tranchesStats() {
+        var aujourdhui = new Date();
+        var liste = [];
+
+        if (grainStats === "jour") {
+            for (var i = 6; i >= 0; i--) {
+                var d = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate() - i);
+                liste.push({
+                    cle: iso(d).substring(0, 10),
+                    libelle: deux(d.getDate()) + "/" + deux(d.getMonth() + 1)
+                });
+            }
+        } else if (grainStats === "semaine") {
+            var lundi = lundiDe(aujourdhui);
+            for (var s = 7; s >= 0; s--) {
+                var debut = new Date(lundi.getFullYear(), lundi.getMonth(), lundi.getDate() - 7 * s);
+                liste.push({ cle: iso(debut).substring(0, 10), libelle: "S" + numeroSemaine(debut) });
+            }
+        } else if (grainStats === "mois") {
+            for (var m = 11; m >= 0; m--) {
+                var mois = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth() - m, 1);
+                liste.push({
+                    cle: iso(mois).substring(0, 7),
+                    libelle: deux(mois.getMonth() + 1) + "/" + String(mois.getFullYear()).slice(2)
+                });
+            }
+        } else {
+            var anneeMin = aujourdhui.getFullYear();
+            donnees.mouvements.concat(operations.elements).forEach(function (x) {
+                var annee = Number(x.ts.substring(0, 4));
+                if (annee && annee < anneeMin) anneeMin = annee;
+            });
+            for (var a = anneeMin; a <= aujourdhui.getFullYear(); a++) {
+                liste.push({ cle: String(a), libelle: String(a) });
+            }
+        }
+
+        return liste;
+    }
+
+    function cleStats(ts) {
+        if (grainStats === "jour") return ts.substring(0, 10);
+        if (grainStats === "semaine") {
+            var d = new Date(ts.substring(0, 10) + "T12:00:00");
+            return iso(lundiDe(d)).substring(0, 10);
+        }
+        if (grainStats === "mois") return ts.substring(0, 7);
+        return ts.substring(0, 4);
+    }
+
+    function rendreStatistiques() {
+        var tranches = tranchesStats();
+        var parCle = {};
+
+        tranches.forEach(function (t) {
+            t.mouvements = 0;
+            t.operations = 0;
+            parCle[t.cle] = t;
+        });
+
+        donnees.mouvements.forEach(function (m) {
+            var t = parCle[cleStats(m.ts)];
+            if (t) t.mouvements++;
+        });
+
+        operations.elements.forEach(function (o) {
+            var t = parCle[cleStats(o.ts)];
+            if (t) t.operations++;
+        });
+
+        var totalM = 0;
+        var totalO = 0;
+        var max = 1;
+
+        tranches.forEach(function (t) {
+            totalM += t.mouvements;
+            totalO += t.operations;
+            if (t.mouvements > max) max = t.mouvements;
+            if (t.operations > max) max = t.operations;
+        });
+
+        document.getElementById("stat-mouvements").textContent = totalM;
+        document.getElementById("stat-operations").textContent = totalO;
+        document.getElementById("stat-total-stats").textContent = totalM + totalO;
+        document.getElementById("periode-stats").textContent = {
+            jour: "7 derniers jours",
+            semaine: "8 dernières semaines",
+            mois: "12 derniers mois",
+            annee: "Toutes les années enregistrées"
+        }[grainStats];
+
+        var graphique = document.getElementById("graphique");
+        graphique.innerHTML = "";
+
+        tranches.forEach(function (t) {
+            var colonne = document.createElement("button");
+            colonne.type = "button";
+            colonne.className = "colonne";
+            colonne.title = t.libelle + " : " + t.mouvements + " mouvement(s), " + t.operations + " opération(s)";
+            colonne.addEventListener("click", function () {
+                afficherToast(t.libelle + "  ·  " + t.mouvements + " mouvement(s)  ·  " + t.operations + " opération(s)");
+            });
+
+            var barres = document.createElement("div");
+            barres.className = "barres";
+
+            var mouvements = document.createElement("div");
+            mouvements.className = "barre" + (t.mouvements ? "" : " vide");
+            mouvements.style.height = (t.mouvements ? Math.max(4, Math.round(t.mouvements / max * 100)) : 3) + "%";
+            mouvements.title = t.libelle + " : " + t.mouvements + " mouvement(s)";
+
+            var operationsBarre = document.createElement("div");
+            operationsBarre.className = "barre operations" + (t.operations ? "" : " vide");
+            operationsBarre.style.height = (t.operations ? Math.max(4, Math.round(t.operations / max * 100)) : 3) + "%";
+            operationsBarre.title = t.libelle + " : " + t.operations + " opération(s)";
+
+            barres.appendChild(mouvements);
+            barres.appendChild(operationsBarre);
+
+            var etiquette = document.createElement("span");
+            etiquette.className = "etiquette-colonne";
+            etiquette.textContent = t.libelle;
+
+            colonne.appendChild(barres);
+            colonne.appendChild(etiquette);
+            graphique.appendChild(colonne);
+        });
+
+        document.getElementById("graphique-vide").classList.toggle("cache", totalM + totalO > 0);
+    }
+
     // ---------------------------------------------------------------- données / export
 
     function rendreDonnees() {
@@ -1004,7 +1153,7 @@
     // ---------------------------------------------------------------- navigation
 
     function afficherVue(nom) {
-        ["saisie", "historique", "taches", "donnees"].forEach(function (v) {
+        ["saisie", "historique", "taches", "stats", "donnees"].forEach(function (v) {
             document.getElementById("vue-" + v).classList.toggle("cache", v !== nom);
         });
 
@@ -1015,8 +1164,11 @@
 
         if (nom === "historique") rendreHistorique();
         if (nom === "taches") rendreTaches();
+        if (nom === "stats") rendreStatistiques();
         if (nom === "donnees") rendreDonnees();
-        window.scrollTo(0, 0);
+
+        var zone = document.querySelector("main");
+        if (zone) zone.scrollTop = 0;
     }
 
     // ---------------------------------------------------------------- horloge
@@ -1117,6 +1269,17 @@
             });
         }
 
+        var segmentsStats = document.querySelectorAll("#segments-stats button");
+        for (var g = 0; g < segmentsStats.length; g++) {
+            segmentsStats[g].addEventListener("click", function () {
+                grainStats = this.dataset.grain;
+                for (var k = 0; k < segmentsStats.length; k++) {
+                    segmentsStats[k].classList.toggle("actif", segmentsStats[k] === this);
+                }
+                rendreStatistiques();
+            });
+        }
+
         document.getElementById("version-app").textContent = "Version " + VERSION + " de l'application.";
 
         document.getElementById("btn-maj").addEventListener("click", function () {
@@ -1183,6 +1346,7 @@
         rendreHistorique();
         rendreTaches();
         rendreOperations();
+        rendreStatistiques();
         rendreDonnees();
         majHorloge();
         setInterval(majHorloge, 1000);

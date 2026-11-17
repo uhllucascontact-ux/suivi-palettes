@@ -1,8 +1,8 @@
-/* Cache local : permet d'ouvrir l'application sans réseau.
+﻿/* Cache local : permet d'ouvrir l'application sans réseau.
    Stratégie « réseau d'abord » : dès qu'il y a du réseau, la dernière version est utilisée.
    Le cache ne sert que de secours hors connexion. */
 
-var CACHE = "suivi-palettes-v14";
+var CACHE = "suivi-palettes-v17";
 var FICHIERS = [
     "./",
     "./index.html",

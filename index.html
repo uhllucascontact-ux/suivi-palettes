@@ -106,6 +106,37 @@
         <p id="taches-vide" class="vide cache">Aucune tâche pour ce filtre.</p>
     </section>
 
+    <!-- ===================== STATISTIQUES ===================== -->
+    <section id="vue-stats" class="vue cache">
+        <div class="segments" id="segments-stats">
+            <button data-grain="jour" class="actif">Jour</button>
+            <button data-grain="semaine">Semaine</button>
+            <button data-grain="mois">Mois</button>
+            <button data-grain="annee">Année</button>
+        </div>
+
+        <div class="carte">
+            <div class="stats">
+                <div><span id="stat-mouvements" class="valeur">0</span><span class="libelle">Mouvements</span></div>
+                <div><span id="stat-operations" class="valeur">0</span><span class="libelle">Opérations</span></div>
+                <div><span id="stat-total-stats" class="valeur">0</span><span class="libelle">Total</span></div>
+            </div>
+            <p class="info-sauvegarde" id="periode-stats"></p>
+        </div>
+
+        <div class="carte">
+            <div class="entete-graphique">
+                <h2>Évolution</h2>
+                <div class="legende">
+                    <span class="pastille mouvements"></span> Mouvements
+                    <span class="pastille operations"></span> Opérations
+                </div>
+            </div>
+            <div id="graphique" class="graphique"></div>
+            <p id="graphique-vide" class="vide cache">Aucune donnée sur cette période.</p>
+        </div>
+    </section>
+
     <!-- ===================== DONNÉES ===================== -->
     <section id="vue-donnees" class="vue cache">
         <div class="carte">
@@ -170,6 +201,9 @@
     </button>
     <button data-vue="taches">
         <span class="icone">✓</span><span>Tâches</span>
+    </button>
+    <button data-vue="stats">
+        <span class="icone">▤</span><span>Stats</span>
     </button>
     <button data-vue="donnees">
         <span class="icone">⇪</span><span>Données</span>
