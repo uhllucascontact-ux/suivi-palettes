@@ -2,7 +2,7 @@
    Stratégie « réseau d'abord » : dès qu'il y a du réseau, la dernière version est utilisée.
    Le cache ne sert que de secours hors connexion. */
 
-var CACHE = "suivi-palettes-v26";
+var CACHE = "suivi-palettes-v27";
 var FICHIERS = [
     "./",
     "./index.html",
