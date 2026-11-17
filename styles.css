@@ -294,6 +294,93 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 
 .vide { text-align: center; color: var(--doux); font-size: 14px; padding: 24px 0; }
 
+/* ============ Tâches ============ */
+.ajout { display: flex; gap: 8px; align-items: stretch; }
+.ajout .champ { flex: 1; min-width: 0; }
+
+.ajouter {
+    flex: none;
+    width: 56px;
+    min-height: 50px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #20180A;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: inherit;
+}
+
+.ajouter:active { background: var(--accent-fonce); }
+
+.resume-taches {
+    margin: 0 2px;
+    font-size: 12px;
+    color: var(--doux);
+}
+
+.tache {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--bordure);
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px 12px;
+}
+
+.tache .case {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 2px solid var(--bordure);
+    background: #fff;
+    color: transparent;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: inherit;
+}
+
+.tache .case.faite {
+    background: var(--succes);
+    border-color: var(--succes);
+    color: #fff;
+}
+
+.tache .corps { flex: 1; min-width: 0; }
+
+.tache .texte {
+    font-size: 15px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.tache.faite .texte {
+    text-decoration: line-through;
+    color: #93A1AB;
+}
+
+.tache .meta {
+    font-size: 11px;
+    color: var(--doux);
+    margin-top: 3px;
+}
+
+.tache .supprimer {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 50%;
+    background: #F3F6F8;
+    color: #8A99A5;
+    font-size: 14px;
+    font-family: inherit;
+}
+
 /* ============ Navigation basse ============ */
 .onglets {
     position: fixed;

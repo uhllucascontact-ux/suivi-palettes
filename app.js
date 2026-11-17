@@ -5,6 +5,7 @@
     "use strict";
 
     var CLE = "suiviPalettes.v1";
+    var CLE_TACHES = "suiviTaches.v1";
 
     var LIEUX = ["H1", "H8", "H9", "H12", "H13", "Exped", "Plateforme", "Béton",
         "Rack kasto", "Arrivage", "Exped H13", "Mag Sig", "Mag adv", "Brocho", "PM"];
@@ -21,6 +22,8 @@
     var saisie = { depart: null, arrivee: null, engin: "BAUMANN" };
     var periode = "jour";
     var recherche = "";
+    var taches = { version: 1, elements: [] };
+    var filtreTaches = "toutes";
 
     // ---------------------------------------------------------------- stockage
 
@@ -49,9 +52,36 @@
         }
     }
 
+    function chargerTaches() {
+        try {
+            var brut = localStorage.getItem(CLE_TACHES);
+            if (!brut) return;
+            var lu = JSON.parse(brut);
+            if (lu && Array.isArray(lu.elements)) taches.elements = lu.elements;
+        } catch (e) {
+            console.warn("Tâches illisibles", e);
+        }
+    }
+
+    function sauverTaches() {
+        try {
+            localStorage.setItem(CLE_TACHES, JSON.stringify(taches));
+            return true;
+        } catch (e) {
+            afficherToast("Mémoire pleine : la tâche n'a pas été enregistrée.", true);
+            return false;
+        }
+    }
+
     // ---------------------------------------------------------------- utilitaires
 
     function deux(n) { return n < 10 ? "0" + n : String(n); }
+
+    function uid() {
+        return (window.crypto && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : String(Date.now()) + Math.random().toString(16).slice(2);
+    }
 
     function iso(maintenant) {
         var d = maintenant || new Date();
@@ -181,7 +211,7 @@
         if (!saisie.depart || !saisie.arrivee || saisie.depart === saisie.arrivee) return;
 
         var mouvement = {
-            id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
+            id: uid(),
             ts: iso(),
             depart: saisie.depart,
             arrivee: saisie.arrivee,
@@ -448,6 +478,124 @@
         conteneur.appendChild(element);
     }
 
+    // ---------------------------------------------------------------- tâches
+
+    function moment(ts) {
+        return dateLisible(ts).substring(0, 5) + " à " + heureLisible(ts).substring(0, 5);
+    }
+
+    function tachesAffichees() {
+        var liste = taches.elements.filter(function (t) {
+            if (filtreTaches === "afaire") return !t.fait;
+            if (filtreTaches === "faites") return !!t.fait;
+            return true;
+        });
+
+        return liste.sort(function (a, b) {
+            var aFaite = a.fait ? 1 : 0;
+            var bFaite = b.fait ? 1 : 0;
+            if (aFaite !== bFaite) return aFaite - bFaite;
+            if (a.fait && b.fait) return a.fait < b.fait ? 1 : -1;
+            return a.cree < b.cree ? -1 : 1;
+        });
+    }
+
+    function rendreTaches() {
+        var liste = tachesAffichees();
+        var conteneur = document.getElementById("liste-taches");
+        conteneur.innerHTML = "";
+
+        var restantes = taches.elements.filter(function (t) { return !t.fait; }).length;
+        var total = taches.elements.length;
+
+        document.getElementById("resume-taches").textContent = total === 0
+            ? "Aucune tâche enregistrée."
+            : (restantes === 0
+                ? "Tout est fait (" + total + (total === 1 ? " tâche)." : " tâches).")
+                : restantes + (restantes === 1 ? " restante" : " restantes") + " sur " + total);
+
+        document.getElementById("taches-vide").classList.toggle("cache", liste.length > 0);
+
+        liste.forEach(function (t) {
+            var element = document.createElement("div");
+            element.className = "tache" + (t.fait ? " faite" : "");
+
+            var caseBouton = document.createElement("button");
+            caseBouton.type = "button";
+            caseBouton.className = "case" + (t.fait ? " faite" : "");
+            caseBouton.textContent = "✓";
+            caseBouton.setAttribute("aria-label", t.fait ? "Décocher la tâche" : "Cocher la tâche");
+            caseBouton.addEventListener("click", function () { basculerTache(t.id); });
+
+            var corps = document.createElement("div");
+            corps.className = "corps";
+
+            var texte = document.createElement("div");
+            texte.className = "texte";
+            texte.textContent = t.texte;
+            texte.addEventListener("click", function () { basculerTache(t.id); });
+
+            var meta = document.createElement("div");
+            meta.className = "meta";
+            meta.textContent = "Créée le " + moment(t.cree) + (t.fait ? "  ·  faite le " + moment(t.fait) : "");
+
+            corps.appendChild(texte);
+            corps.appendChild(meta);
+
+            var supprimer = document.createElement("button");
+            supprimer.type = "button";
+            supprimer.className = "supprimer";
+            supprimer.textContent = "✕";
+            supprimer.setAttribute("aria-label", "Supprimer la tâche");
+            supprimer.addEventListener("click", function () { supprimerTache(t.id); });
+
+            element.appendChild(caseBouton);
+            element.appendChild(corps);
+            element.appendChild(supprimer);
+            conteneur.appendChild(element);
+        });
+    }
+
+    function ajouterTache() {
+        var champ = document.getElementById("nouvelle-tache");
+        var texte = (champ.value || "").trim();
+        if (!texte) {
+            champ.focus();
+            return;
+        }
+
+        taches.elements.push({ id: uid(), texte: texte, cree: iso(), fait: null });
+        if (!sauverTaches()) {
+            taches.elements.pop();
+            return;
+        }
+
+        champ.value = "";
+        champ.focus();
+        rendreTaches();
+        afficherToast("Tâche ajoutée.");
+    }
+
+    function basculerTache(id) {
+        var t = taches.elements.filter(function (x) { return x.id === id; })[0];
+        if (!t) return;
+
+        t.fait = t.fait ? null : iso();
+        sauverTaches();
+        rendreTaches();
+    }
+
+    function supprimerTache(id) {
+        var t = taches.elements.filter(function (x) { return x.id === id; })[0];
+        if (!t) return;
+        if (!confirm("Supprimer cette tâche ?\n\n" + t.texte)) return;
+
+        taches.elements = taches.elements.filter(function (x) { return x.id !== id; });
+        sauverTaches();
+        rendreTaches();
+        afficherToast("Tâche supprimée.");
+    }
+
     // ---------------------------------------------------------------- données / export
 
     function rendreDonnees() {
@@ -590,7 +738,7 @@
     // ---------------------------------------------------------------- navigation
 
     function afficherVue(nom) {
-        ["saisie", "historique", "donnees"].forEach(function (v) {
+        ["saisie", "historique", "taches", "donnees"].forEach(function (v) {
             document.getElementById("vue-" + v).classList.toggle("cache", v !== nom);
         });
 
@@ -600,6 +748,7 @@
         }
 
         if (nom === "historique") rendreHistorique();
+        if (nom === "taches") rendreTaches();
         if (nom === "donnees") rendreDonnees();
         window.scrollTo(0, 0);
     }
@@ -679,6 +828,26 @@
         document.getElementById("btn-exporter").addEventListener("click", function () { exporter(true); });
         document.getElementById("btn-telecharger").addEventListener("click", function () { exporter(false); });
 
+        document.getElementById("btn-ajouter-tache").addEventListener("click", ajouterTache);
+
+        document.getElementById("nouvelle-tache").addEventListener("keydown", function (evenement) {
+            if (evenement.key === "Enter") {
+                evenement.preventDefault();
+                ajouterTache();
+            }
+        });
+
+        var segmentsTaches = document.querySelectorAll("#segments-taches button");
+        for (var s = 0; s < segmentsTaches.length; s++) {
+            segmentsTaches[s].addEventListener("click", function () {
+                filtreTaches = this.dataset.filtre;
+                for (var k = 0; k < segmentsTaches.length; k++) {
+                    segmentsTaches[k].classList.toggle("actif", segmentsTaches[k] === this);
+                }
+                rendreTaches();
+            });
+        }
+
         document.getElementById("btn-vider").addEventListener("click", function () {
             if (donnees.mouvements.length === 0) {
                 afficherToast("Aucune donnée à effacer.", true);
@@ -699,10 +868,12 @@
 
     function demarrer() {
         charger();
+        chargerTaches();
         saisie.engin = donnees.dernierEngin;
         brancher();
         rendreSaisie();
         rendreHistorique();
+        rendreTaches();
         rendreDonnees();
         majHorloge();
         setInterval(majHorloge, 1000);

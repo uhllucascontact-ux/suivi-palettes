@@ -1,7 +1,7 @@
 # Version mobile de test (iPhone)
 
 Version web de test, à ouvrir dans Safari sur l'iPhone. Elle reprend l'écran de saisie,
-l'historique et l'envoi du relevé par mail (Gmail ou Mail).
+l'historique, une liste de tâches et l'envoi du relevé par mail (Gmail ou Mail).
 
 ## Accès
 
@@ -53,4 +53,5 @@ node ..\webtest\test.cjs <adresse> <dossier-images>  # parcours complet (Playwri
 
 Le parcours automatisé vérifie : 15 lieux, blocage du lieu identique, activation du bouton,
 confirmation, réinitialisation, historique, recherche, modification, statistiques, export,
-persistance après rechargement et fonctionnement hors réseau.
+tâches (ajout, cocher, décocher, filtres, suppression), persistance après rechargement et
+fonctionnement hors réseau.

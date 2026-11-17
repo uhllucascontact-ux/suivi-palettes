@@ -75,6 +75,31 @@
         <p id="liste-vide" class="vide cache">Aucun mouvement pour ce filtre.</p>
     </section>
 
+    <!-- ===================== TÂCHES ===================== -->
+    <section id="vue-taches" class="vue cache">
+        <div class="carte">
+            <label class="etape" for="nouvelle-tache">Nouvelle tâche</label>
+            <div class="ajout">
+                <input id="nouvelle-tache" class="champ" type="text" maxlength="200"
+                       placeholder="Ex. ranger les palettes du quai 2…"
+                       autocomplete="off" autocapitalize="sentences">
+                <button id="btn-ajouter-tache" class="ajouter" aria-label="Ajouter la tâche">+</button>
+            </div>
+            <p class="aide">Touche Entrée ou bouton +. Les tâches restent sur ce téléphone.</p>
+        </div>
+
+        <div class="segments" id="segments-taches">
+            <button data-filtre="toutes" class="actif">Toutes</button>
+            <button data-filtre="afaire">À faire</button>
+            <button data-filtre="faites">Faites</button>
+        </div>
+
+        <p id="resume-taches" class="resume-taches"></p>
+
+        <div id="liste-taches" class="liste"></div>
+        <p id="taches-vide" class="vide cache">Aucune tâche pour ce filtre.</p>
+    </section>
+
     <!-- ===================== DONNÉES ===================== -->
     <section id="vue-donnees" class="vue cache">
         <div class="carte">
@@ -133,6 +158,9 @@
     </button>
     <button data-vue="historique">
         <span class="icone">☰</span><span>Historique</span>
+    </button>
+    <button data-vue="taches">
+        <span class="icone">✓</span><span>Tâches</span>
     </button>
     <button data-vue="donnees">
         <span class="icone">⇪</span><span>Données</span>
