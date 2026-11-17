@@ -1,0 +1,56 @@
+# Version mobile de test (iPhone)
+
+Version web de test, à ouvrir dans Safari sur l'iPhone. Elle reprend l'écran de saisie,
+l'historique et l'envoi du relevé par mail (Gmail ou Mail).
+
+## Accès
+
+L'adresse est fournie par le tunnel Cloudflare lancé sur le PC. Elle ressemble à
+`https://xxxxx.trycloudflare.com` et **change à chaque redémarrage du tunnel**.
+
+- Le PC doit rester allumé et le tunnel actif pendant le test.
+- L'adresse doit être ouverte dans **Safari** (pas Chrome) pour l'installation.
+
+## Installation sur l'iPhone
+
+1. Ouvrir l'adresse dans Safari.
+2. Bouton **Partager** → **Sur l'écran d'accueil**.
+3. Ouvrir l'application depuis l'écran d'accueil : plein écran, puis fonctionne hors réseau.
+
+## Données
+
+- Enregistrées dans le navigateur du téléphone (`localStorage`), sous l'adresse utilisée.
+- **Aucun envoi vers Internet** : seul l'export par mail fait sortir des données.
+- Aucun partage avec le logiciel PC : les deux historiques sont indépendants.
+- Si l'adresse change, les données restent sur le téléphone mais ne sont plus visibles par
+  la nouvelle adresse : exporter avant de changer.
+
+## Fichiers
+
+| Fichier | Rôle |
+| --- | --- |
+| `index.html` | écran unique (saisie, historique, données) |
+| `app.js` | logique : stockage local, saisie, historique, export |
+| `xlsx.js` | génère le fichier Excel sans dépendance |
+| `styles.css` | apparence |
+| `sw.js` | mode hors ligne (service worker) |
+| `manifest.webmanifest`, `icons/` | installation sur l'écran d'accueil |
+| `serveur.py` | serveur local (port 8080) |
+| `demarrer.ps1` | lance le serveur + le tunnel et affiche l'adresse |
+
+## Relancer
+
+```powershell
+.\demarrer.ps1
+```
+
+## Tests
+
+```powershell
+node tests\xlsx.test.cjs sortie.xlsx                 # génération Excel
+node ..\webtest\test.cjs <adresse> <dossier-images>  # parcours complet (Playwright + Edge)
+```
+
+Le parcours automatisé vérifie : 15 lieux, blocage du lieu identique, activation du bouton,
+confirmation, réinitialisation, historique, recherche, modification, statistiques, export,
+persistance après rechargement et fonctionnement hors réseau.

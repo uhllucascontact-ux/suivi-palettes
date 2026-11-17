@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Suivi palettes</title>
+    <meta name="theme-color" content="#1B2A33">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Palettes">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="entete">
+    <div class="entete-titre">
+        <span class="marque">SUIVI</span>
+        <h1>Mouvements de palettes</h1>
+    </div>
+    <div class="entete-droite">
+        <span id="horloge" class="horloge"></span>
+        <span id="compteur" class="compteur"></span>
+    </div>
+</header>
+
+<main>
+
+    <!-- ===================== SAISIE ===================== -->
+    <section id="vue-saisie" class="vue">
+        <div class="carte">
+            <div class="etape"><span class="puce">1</span> Lieu de départ</div>
+            <button id="sel-depart" class="choix" data-vide="true">Choisir le départ…</button>
+        </div>
+
+        <div class="carte">
+            <div class="etape"><span class="puce">2</span> Lieu d'arrivée</div>
+            <button id="sel-arrivee" class="choix" data-vide="true">Choisir l'arrivée…</button>
+        </div>
+
+        <div class="carte">
+            <div class="etape"><span class="puce">3</span> Engin utilisé</div>
+            <div class="engins">
+                <button class="engin" data-engin="BAUMANN">BAUMANN</button>
+                <button class="engin" data-engin="FENWICK">FENWICK</button>
+            </div>
+        </div>
+
+        <div class="carte">
+            <label class="etape" for="commentaire">Commentaire <span class="facultatif">facultatif</span></label>
+            <input id="commentaire" class="champ" type="text" maxlength="300"
+                   placeholder="Ex. attente camion, palette bloquée…"
+                   autocomplete="off" autocapitalize="sentences">
+        </div>
+
+        <button id="btn-enregistrer" class="principal" disabled>ENREGISTRER</button>
+        <p class="aide">La date et l'heure sont ajoutées automatiquement.</p>
+    </section>
+
+    <!-- ===================== HISTORIQUE ===================== -->
+    <section id="vue-historique" class="vue cache">
+        <div class="segments" id="segments-periode">
+            <button data-periode="jour" class="actif">Aujourd'hui</button>
+            <button data-periode="semaine">7 jours</button>
+            <button data-periode="tout">Tout</button>
+        </div>
+
+        <input id="recherche" class="champ recherche" type="search" placeholder="Rechercher un lieu, un engin, un mot…"
+               autocomplete="off">
+
+        <div id="liste" class="liste"></div>
+        <p id="liste-vide" class="vide cache">Aucun mouvement pour ce filtre.</p>
+    </section>
+
+    <!-- ===================== DONNÉES ===================== -->
+    <section id="vue-donnees" class="vue cache">
+        <div class="carte">
+            <h2>Résumé</h2>
+            <div class="stats">
+                <div><span id="stat-total" class="valeur">0</span><span class="libelle">mouvements</span></div>
+                <div><span id="stat-jour" class="valeur">0</span><span class="libelle">aujourd'hui</span></div>
+                <div><span id="stat-baumann" class="valeur">0</span><span class="libelle">Baumann</span></div>
+                <div><span id="stat-fenwick" class="valeur">0</span><span class="libelle">Fenwick</span></div>
+            </div>
+            <p id="info-sauvegarde" class="info-sauvegarde"></p>
+        </div>
+
+        <div class="carte">
+            <h2>Envoyer par mail</h2>
+            <p class="texte">Le fichier est préparé, puis la fenêtre d'envoi s'ouvre : choisissez Gmail (ou Mail).</p>
+
+            <label class="etiquette" for="export-periode">PÉRIODE</label>
+            <select id="export-periode" class="champ">
+                <option value="jour">Aujourd'hui</option>
+                <option value="semaine">7 derniers jours</option>
+                <option value="tout" selected>Tous les mouvements</option>
+            </select>
+
+            <label class="etiquette" for="export-format">FORMAT</label>
+            <select id="export-format" class="champ">
+                <option value="xlsx" selected>Excel (.xlsx)</option>
+                <option value="csv">CSV (.csv)</option>
+            </select>
+
+            <button id="btn-exporter" class="principal">ENVOYER PAR MAIL</button>
+            <button id="btn-telecharger" class="secondaire">Enregistrer le fichier</button>
+            <p id="apercu-export" class="aide"></p>
+        </div>
+
+        <div class="carte">
+            <h2>Installation sur l'iPhone</h2>
+            <p class="texte">Dans Safari : bouton <strong>Partager</strong> (carré avec une flèche), puis
+                <strong>Sur l'écran d'accueil</strong>. L'application s'ouvre ensuite en plein écran et
+                fonctionne sans réseau.</p>
+        </div>
+
+        <div class="carte danger">
+            <h2>Données du téléphone</h2>
+            <p class="texte">Les mouvements sont enregistrés dans ce navigateur, sur ce téléphone uniquement.
+                Une suppression est définitive : exportez avant.</p>
+            <button id="btn-vider" class="secondaire danger-texte">Effacer toutes les données</button>
+        </div>
+    </section>
+
+</main>
+
+<nav class="onglets">
+    <button data-vue="saisie" class="actif">
+        <span class="icone">＋</span><span>Saisir</span>
+    </button>
+    <button data-vue="historique">
+        <span class="icone">☰</span><span>Historique</span>
+    </button>
+    <button data-vue="donnees">
+        <span class="icone">⇪</span><span>Données</span>
+    </button>
+</nav>
+
+<!-- Feuille (sélecteur de lieu / détail d'un mouvement) -->
+<div id="voile" class="voile cache"></div>
+<div id="feuille" class="feuille cache" role="dialog" aria-modal="true">
+    <div class="feuille-entete">
+        <h2 id="feuille-titre">Choisir</h2>
+        <button id="feuille-fermer" class="fermer" aria-label="Fermer">✕</button>
+    </div>
+    <div id="feuille-contenu" class="feuille-contenu"></div>
+</div>
+
+<div id="toast" class="toast cache"></div>
+
+<script src="xlsx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
