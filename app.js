@@ -6,6 +6,10 @@
 
     var CLE = "suiviPalettes.v1";
     var CLE_TACHES = "suiviTaches.v1";
+    var CLE_OPERATIONS = "suiviOperations.v1";
+
+    var TYPES_OPERATIONS = ["Palettes vides", "Benne ferraille", "Rehausses", "Chutes",
+        "Ferraille", "Bennes copeaux", "Bois"];
 
     var LIEUX = ["H1", "H8", "H9", "H12", "H13", "Exped", "Plateforme", "Béton",
         "Rack kasto", "Arrivage", "Exped H13", "Mag Sig", "Mag adv", "Brocho", "PM"];
@@ -24,6 +28,7 @@
     var recherche = "";
     var taches = { version: 1, elements: [] };
     var filtreTaches = "toutes";
+    var operations = { version: 1, elements: [] };
 
     // ---------------------------------------------------------------- stockage
 
@@ -69,6 +74,27 @@
             return true;
         } catch (e) {
             afficherToast("Mémoire pleine : la tâche n'a pas été enregistrée.", true);
+            return false;
+        }
+    }
+
+    function chargerOperations() {
+        try {
+            var brut = localStorage.getItem(CLE_OPERATIONS);
+            if (!brut) return;
+            var lu = JSON.parse(brut);
+            if (lu && Array.isArray(lu.elements)) operations.elements = lu.elements;
+        } catch (e) {
+            console.warn("Opérations illisibles", e);
+        }
+    }
+
+    function sauverOperations() {
+        try {
+            localStorage.setItem(CLE_OPERATIONS, JSON.stringify(operations));
+            return true;
+        } catch (e) {
+            afficherToast("Mémoire pleine : l'opération n'a pas été enregistrée.", true);
             return false;
         }
     }
@@ -238,18 +264,22 @@
 
     // ---------------------------------------------------------------- historique
 
-    function mouvementsFiltres() {
-        var debut = jourAujourdhui();
+    function debutPeriode() {
         if (periode === "semaine") {
             var d = new Date();
             d.setDate(d.getDate() - 6);
-            debut = iso(d).substring(0, 10);
+            return iso(d).substring(0, 10);
         }
+        if (periode === "tout") return "0000-00-00";
+        return jourAujourdhui();
+    }
 
+    function mouvementsFiltres() {
+        var debut = debutPeriode();
         var texte = recherche.trim().toLowerCase();
 
         return trierRecents(donnees.mouvements.filter(function (m) {
-            if (periode !== "tout" && jourDe(m.ts) < debut) return false;
+            if (jourDe(m.ts) < debut) return false;
             if (!texte) return true;
             var tout = (m.depart + " " + m.arrivee + " " + m.engin + " " + (m.commentaire || "") +
                 " " + dateLisible(m.ts)).toLowerCase();
@@ -257,55 +287,244 @@
         }));
     }
 
+    /* Regroupe les opérations du même type et de la même heure : « Bennes copeaux ×3 · 14 h ». */
+    function operationsRegroupees() {
+        var debut = debutPeriode();
+        var texte = recherche.trim().toLowerCase();
+        var groupes = {};
+
+        operations.elements.forEach(function (o) {
+            if (jourDe(o.ts) < debut) return;
+            if (texte && (o.type + " " + dateLisible(o.ts)).toLowerCase().indexOf(texte) < 0) return;
+
+            var cle = o.type + "|" + o.ts.substring(0, 13);
+            if (!groupes[cle]) groupes[cle] = { type: o.type, ts: o.ts, elements: [] };
+            groupes[cle].elements.push(o);
+            if (o.ts > groupes[cle].ts) groupes[cle].ts = o.ts;
+        });
+
+        return Object.keys(groupes).map(function (cle) {
+            var groupe = groupes[cle];
+            groupe.elements.sort(function (a, b) { return a.ts < b.ts ? -1 : 1; });
+            return groupe;
+        });
+    }
+
+    function elementsHistorique() {
+        var elements = [];
+
+        mouvementsFiltres().forEach(function (m) {
+            elements.push({ genre: "mouvement", ts: m.ts, mouvement: m });
+        });
+
+        operationsRegroupees().forEach(function (groupe) {
+            elements.push({ genre: "operations", ts: groupe.ts, groupe: groupe });
+        });
+
+        return elements.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
+    }
+
     function rendreHistorique() {
-        var liste = mouvementsFiltres();
+        var elements = elementsHistorique();
         var conteneur = document.getElementById("liste");
         var vide = document.getElementById("liste-vide");
+
         conteneur.innerHTML = "";
+        vide.classList.toggle("cache", elements.length > 0);
 
-        vide.classList.toggle("cache", liste.length > 0);
+        elements.forEach(function (element) {
+            conteneur.appendChild(element.genre === "operations"
+                ? carteOperations(element.groupe)
+                : carteMouvement(element.mouvement));
+        });
+    }
 
-        liste.forEach(function (m) {
+    function carteMouvement(m) {
+        var bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "element" + (estModifie(m) ? " modifie" : "");
+
+        var corps = document.createElement("div");
+        corps.className = "corps";
+
+        var horaire = document.createElement("div");
+        horaire.className = "horaire";
+        horaire.textContent = dateLisible(m.ts) + "  ·  " + heureLisible(m.ts);
+
+        var trajet = document.createElement("div");
+        trajet.className = "trajet";
+        trajet.textContent = m.depart + " → " + m.arrivee;
+
+        var details = document.createElement("div");
+        details.className = "details";
+        details.textContent = m.engin + (estModifie(m) ? "  ·  modifié" : "");
+
+        corps.appendChild(horaire);
+        corps.appendChild(trajet);
+        corps.appendChild(details);
+
+        if (m.commentaire) {
+            var com = document.createElement("div");
+            com.className = "commentaire";
+            com.textContent = m.commentaire;
+            corps.appendChild(com);
+        }
+
+        var chevron = document.createElement("span");
+        chevron.className = "chevron";
+        chevron.textContent = "›";
+
+        bouton.appendChild(corps);
+        bouton.appendChild(chevron);
+        bouton.addEventListener("click", function () { ouvrirDetail(m); });
+
+        return bouton;
+    }
+
+    function carteOperations(groupe) {
+        var bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "element grp-operation";
+
+        var corps = document.createElement("div");
+        corps.className = "corps";
+
+        var horaire = document.createElement("div");
+        horaire.className = "horaire";
+        horaire.textContent = dateLisible(groupe.ts) + "  ·  " + heureLisible(groupe.ts).substring(0, 2) + " h";
+
+        var titre = document.createElement("div");
+        titre.className = "trajet";
+        titre.textContent = groupe.type + " ×" + groupe.elements.length;
+
+        var temps = document.createElement("div");
+        temps.className = "sous-temps";
+        temps.textContent = groupe.elements.map(function (o) {
+            return heureLisible(o.ts).substring(0, 5);
+        }).join("  ·  ");
+
+        corps.appendChild(horaire);
+        corps.appendChild(titre);
+        corps.appendChild(temps);
+
+        var chevron = document.createElement("span");
+        chevron.className = "chevron";
+        chevron.textContent = "›";
+
+        bouton.appendChild(corps);
+        bouton.appendChild(chevron);
+        bouton.addEventListener("click", function () { ouvrirDetailOperations(groupe); });
+
+        return bouton;
+    }
+
+    function ligneDetail(libelle, valeur) {
+        var ligne = document.createElement("div");
+        ligne.className = "ligne";
+        var a = document.createElement("span");
+        a.textContent = libelle;
+        var b = document.createElement("span");
+        b.textContent = valeur;
+        ligne.appendChild(a);
+        ligne.appendChild(b);
+        return ligne;
+    }
+
+    function ouvrirDetailOperations(groupe) {
+        ouvrirFeuille("Opérations", function (contenu) {
+            var detail = document.createElement("div");
+            detail.className = "detail";
+            detail.appendChild(ligneDetail("Type", groupe.type));
+            detail.appendChild(ligneDetail("Date", dateLisible(groupe.ts)));
+            detail.appendChild(ligneDetail("Nombre", groupe.elements.length +
+                (groupe.elements.length === 1 ? " unité" : " unités")));
+            contenu.appendChild(detail);
+
+            groupe.elements.forEach(function (o) {
+                var ligne = document.createElement("div");
+                ligne.className = "ligne-operation";
+
+                var heure = document.createElement("span");
+                heure.className = "heure-op";
+                heure.textContent = heureLisible(o.ts);
+
+                var retirer = document.createElement("button");
+                retirer.type = "button";
+                retirer.className = "retirer";
+                retirer.textContent = "✕";
+                retirer.setAttribute("aria-label", "Retirer cette opération");
+                retirer.addEventListener("click", function () {
+                    if (!confirm("Retirer l'opération de " + heureLisible(o.ts).substring(0, 5) + " ?")) return;
+
+                    operations.elements = operations.elements.filter(function (x) { return x.id !== o.id; });
+                    sauverOperations();
+                    fermerFeuille();
+                    rendreOperations();
+                    rendreHistorique();
+                    afficherToast("Opération retirée.");
+                });
+
+                ligne.appendChild(heure);
+                ligne.appendChild(retirer);
+                contenu.appendChild(ligne);
+            });
+        });
+    }
+
+    function rendreOperations() {
+        var grille = document.getElementById("grille-operations");
+        grille.innerHTML = "";
+
+        TYPES_OPERATIONS.forEach(function (type) {
             var bouton = document.createElement("button");
             bouton.type = "button";
-            bouton.className = "element" + (estModifie(m) ? " modifie" : "");
+            bouton.className = "operation";
+            bouton.dataset.type = type;
 
-            var corps = document.createElement("div");
-            corps.className = "corps";
+            var libelle = document.createElement("span");
+            libelle.className = "libelle";
+            libelle.textContent = type;
 
-            var horaire = document.createElement("div");
-            horaire.className = "horaire";
-            horaire.textContent = dateLisible(m.ts) + "  ·  " + heureLisible(m.ts);
+            var compteur = document.createElement("span");
+            compteur.className = "compteur";
+            var nombre = operationsDuJour(type);
+            compteur.textContent = nombre > 0 ? String(nombre) : "";
 
-            var trajet = document.createElement("div");
-            trajet.className = "trajet";
-            trajet.textContent = m.depart + " → " + m.arrivee;
+            var plus = document.createElement("span");
+            plus.className = "plus";
+            plus.textContent = "+";
 
-            var details = document.createElement("div");
-            details.className = "details";
-            details.textContent = m.engin + (estModifie(m) ? "  ·  modifié" : "");
+            bouton.appendChild(libelle);
+            bouton.appendChild(compteur);
+            bouton.appendChild(plus);
+            bouton.addEventListener("click", function () { ajouterOperation(type); });
 
-            corps.appendChild(horaire);
-            corps.appendChild(trajet);
-            corps.appendChild(details);
-
-            if (m.commentaire) {
-                var com = document.createElement("div");
-                com.className = "commentaire";
-                com.textContent = m.commentaire;
-                corps.appendChild(com);
-            }
-
-            var chevron = document.createElement("span");
-            chevron.className = "chevron";
-            chevron.textContent = "›";
-
-            bouton.appendChild(corps);
-            bouton.appendChild(chevron);
-            bouton.addEventListener("click", function () { ouvrirDetail(m); });
-
-            conteneur.appendChild(bouton);
+            grille.appendChild(bouton);
         });
+
+        var total = operationsDuJour();
+        document.getElementById("resume-operations").textContent = total === 0
+            ? "Aucune opération aujourd'hui."
+            : total + (total === 1 ? " opération aujourd'hui." : " opérations aujourd'hui.");
+    }
+
+    function operationsDuJour(type) {
+        return operations.elements.filter(function (o) {
+            return jourDe(o.ts) === jourAujourdhui() && (!type || o.type === type);
+        }).length;
+    }
+
+    function ajouterOperation(type) {
+        operations.elements.push({ id: uid(), type: type, ts: iso() });
+        if (!sauverOperations()) {
+            operations.elements.pop();
+            return;
+        }
+
+        rendreOperations();
+        if (!document.getElementById("vue-historique").classList.contains("cache")) rendreHistorique();
+
+        afficherToast(type + "  +1   ·   " + operationsDuJour(type) + " aujourd'hui");
     }
 
     function ouvrirDetail(m) {
@@ -632,31 +851,59 @@
         majApercuExport();
     }
 
-    function mouvementsExport() {
+    function debutExport() {
         var periodeChoisie = document.getElementById("export-periode").value;
-        var debut = jourAujourdhui();
 
         if (periodeChoisie === "semaine") {
             var d = new Date();
             d.setDate(d.getDate() - 6);
-            debut = iso(d).substring(0, 10);
+            return iso(d).substring(0, 10);
         }
 
-        var liste = donnees.mouvements.filter(function (m) {
-            return periodeChoisie === "tout" || jourDe(m.ts) >= debut;
+        if (periodeChoisie === "tout") return "0000-00-00";
+        return jourAujourdhui();
+    }
+
+    /* Une ligne par mouvement, une ligne par opération (colonne « Opération »). */
+    function lignesExport() {
+        var debut = debutExport();
+        var lignes = [];
+
+        donnees.mouvements.forEach(function (m) {
+            if (jourDe(m.ts) < debut) return;
+            lignes.push({
+                ts: m.ts,
+                depart: m.depart,
+                arrivee: m.arrivee,
+                engin: m.engin,
+                commentaire: m.commentaire || "",
+                operation: ""
+            });
         });
 
-        return trierAnciens(liste);
+        operations.elements.forEach(function (o) {
+            if (jourDe(o.ts) < debut) return;
+            lignes.push({
+                ts: o.ts,
+                depart: "",
+                arrivee: "",
+                engin: "",
+                commentaire: "",
+                operation: o.type
+            });
+        });
+
+        return lignes.sort(function (a, b) { return a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0; });
     }
 
     function majApercuExport() {
-        var liste = mouvementsExport();
+        var lignes = lignesExport();
         var apercu = document.getElementById("apercu-export");
-        apercu.textContent = liste.length === 0
-            ? "Aucun mouvement sur cette période."
-            : (liste.length === 1 ? "1 mouvement sera envoyé." : liste.length + " mouvements seront envoyés.");
-        document.getElementById("btn-exporter").disabled = liste.length === 0;
-        document.getElementById("btn-telecharger").disabled = liste.length === 0;
+        apercu.textContent = lignes.length === 0
+            ? "Rien à envoyer sur cette période."
+            : (lignes.length === 1 ? "1 ligne sera envoyée." : lignes.length + " lignes seront envoyées.");
+        document.getElementById("btn-exporter").disabled = lignes.length === 0;
+        document.getElementById("btn-telecharger").disabled = lignes.length === 0;
     }
 
     function nomFichier(extension) {
@@ -664,7 +911,7 @@
     }
 
     function exporter(partager) {
-        var liste = mouvementsExport();
+        var liste = lignesExport();
         if (liste.length === 0) return;
 
         var format = document.getElementById("export-format").value;
@@ -722,12 +969,12 @@
     }
 
     function construireCsv(liste) {
-        var lignes = ["Date;Heure;Départ;Arrivée;Engin;Commentaire"];
+        var lignes = ["Date;Heure;Départ;Arrivée;Engin;Commentaire;Opération"];
 
-        liste.forEach(function (m) {
-            var champs = [dateLisible(m.ts), heureLisible(m.ts), m.depart, m.arrivee, m.engin, m.commentaire || ""];
+        liste.forEach(function (l) {
+            var champs = [dateLisible(l.ts), heureLisible(l.ts), l.depart, l.arrivee, l.engin, l.commentaire, l.operation];
             lignes.push(champs.map(function (v) {
-                var texte = String(v);
+                var texte = String(v == null ? "" : v);
                 return /[;"\n\r]/.test(texte) ? '"' + texte.replace(/"/g, '""') + '"' : texte;
             }).join(";"));
         });
@@ -869,11 +1116,13 @@
     function demarrer() {
         charger();
         chargerTaches();
+        chargerOperations();
         saisie.engin = donnees.dernierEngin;
         brancher();
         rendreSaisie();
         rendreHistorique();
         rendreTaches();
+        rendreOperations();
         rendreDonnees();
         majHorloge();
         setInterval(majHorloge, 1000);

@@ -1,7 +1,7 @@
 /* Générateur de fichier Excel (.xlsx) minimal, sans dépendance.
    Utilisé par l'application mobile pour envoyer le relevé par mail. */
 
-var XLSX_LETTRES = ["A", "B", "C", "D", "E", "F"];
+var XLSX_LETTRES = ["A", "B", "C", "D", "E", "F", "G"];
 
 var XLSX_TABLE_CRC = (function () {
     var table = new Uint32Array(256);
@@ -144,7 +144,7 @@ function xlsxHeureSerie(heures, minutes, secondes) {
     return (heures * 3600 + minutes * 60 + secondes) / 86400;
 }
 
-function xlsxFeuille(mouvements) {
+function xlsxFeuille(lignesDonnees) {
     var lignes = [];
 
     lignes.push(
@@ -155,11 +155,12 @@ function xlsxFeuille(mouvements) {
         xlsxCelluleTexte(1, 3, "Arrivée", 1) +
         xlsxCelluleTexte(1, 4, "Engin", 1) +
         xlsxCelluleTexte(1, 5, "Commentaire", 1) +
+        xlsxCelluleTexte(1, 6, "Opération", 1) +
         "</row>");
 
-    mouvements.forEach(function (m, index) {
+    lignesDonnees.forEach(function (l, index) {
         var numero = index + 2;
-        var parties = m.ts.split("T");
+        var parties = l.ts.split("T");
         var d = parties[0].split("-");
         var h = parties[1].split(":");
 
@@ -167,14 +168,15 @@ function xlsxFeuille(mouvements) {
             '<row r="' + numero + '">' +
             xlsxCelluleNombre(numero, 0, xlsxDateSerie(+d[0], +d[1], +d[2]), 2) +
             xlsxCelluleNombre(numero, 1, xlsxHeureSerie(+h[0], +h[1], +h[2]), 3) +
-            xlsxCelluleTexte(numero, 2, m.depart) +
-            xlsxCelluleTexte(numero, 3, m.arrivee) +
-            xlsxCelluleTexte(numero, 4, m.engin) +
-            xlsxCelluleTexte(numero, 5, m.commentaire || "") +
+            xlsxCelluleTexte(numero, 2, l.depart) +
+            xlsxCelluleTexte(numero, 3, l.arrivee) +
+            xlsxCelluleTexte(numero, 4, l.engin) +
+            xlsxCelluleTexte(numero, 5, l.commentaire || "") +
+            xlsxCelluleTexte(numero, 6, l.operation || "") +
             "</row>");
     });
 
-    var derniere = Math.max(1, mouvements.length + 1);
+    var derniere = Math.max(1, lignesDonnees.length + 1);
 
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
@@ -185,9 +187,10 @@ function xlsxFeuille(mouvements) {
         '<col min="2" max="2" width="11" customWidth="1"/>' +
         '<col min="3" max="4" width="18" customWidth="1"/>' +
         '<col min="5" max="5" width="13" customWidth="1"/>' +
-        '<col min="6" max="6" width="42" customWidth="1"/></cols>' +
+        '<col min="6" max="6" width="38" customWidth="1"/>' +
+        '<col min="7" max="7" width="22" customWidth="1"/></cols>' +
         "<sheetData>" + lignes.join("") + "</sheetData>" +
-        '<autoFilter ref="A1:F' + derniere + '"/>' +
+        '<autoFilter ref="A1:G' + derniere + '"/>' +
         "</worksheet>";
 }
 
