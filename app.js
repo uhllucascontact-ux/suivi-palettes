@@ -7,7 +7,7 @@
     var CLE = "suiviPalettes.v1";
     var CLE_TACHES = "suiviTaches.v1";
     var CLE_OPERATIONS = "suiviOperations.v1";
-    var VERSION = 19;
+    var VERSION = 25;
 
     var TYPES_OPERATIONS = ["Palettes vides", "Benne ferraille", "Rehausses", "Chutes",
         "Ferraille", "Bennes copeaux", "Bois"];
@@ -31,6 +31,10 @@
     var filtreTaches = "toutes";
     var operations = { version: 1, elements: [] };
     var grainStats = "jour";
+
+    var NOMS_JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+    var NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+        "septembre", "octobre", "novembre", "décembre"];
 
     // ---------------------------------------------------------------- stockage
 
@@ -857,25 +861,40 @@
         var liste = [];
 
         if (grainStats === "jour") {
-            for (var i = 6; i >= 0; i--) {
-                var d = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate() - i);
+            // Semaine fixe du lundi au dimanche (elle ne glisse pas d'un jour à l'autre).
+            var lundi = lundiDe(aujourdhui);
+            for (var i = 0; i < 7; i++) {
+                var d = new Date(lundi.getFullYear(), lundi.getMonth(), lundi.getDate() + i);
+                var dateCourte = deux(d.getDate()) + "/" + deux(d.getMonth() + 1);
+                var cleJour = iso(d).substring(0, 10);
                 liste.push({
-                    cle: iso(d).substring(0, 10),
-                    libelle: deux(d.getDate()) + "/" + deux(d.getMonth() + 1)
+                    cle: cleJour,
+                    libelle: NOMS_JOURS[d.getDay()],
+                    sousLibelle: dateCourte,
+                    detail: NOMS_JOURS[d.getDay()] + " " + dateCourte,
+                    aujourdhui: cleJour === jourAujourdhui()
                 });
             }
         } else if (grainStats === "semaine") {
             var lundi = lundiDe(aujourdhui);
             for (var s = 7; s >= 0; s--) {
                 var debut = new Date(lundi.getFullYear(), lundi.getMonth(), lundi.getDate() - 7 * s);
-                liste.push({ cle: iso(debut).substring(0, 10), libelle: "S" + numeroSemaine(debut) });
+                var fin = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + 6);
+                var numero = numeroSemaine(debut);
+                liste.push({
+                    cle: iso(debut).substring(0, 10),
+                    libelle: "S" + numero,
+                    detail: "Semaine " + numero + " · du " + deux(debut.getDate()) + "/" + deux(debut.getMonth() + 1) +
+                        " au " + deux(fin.getDate()) + "/" + deux(fin.getMonth() + 1)
+                });
             }
         } else if (grainStats === "mois") {
             for (var m = 11; m >= 0; m--) {
                 var mois = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth() - m, 1);
                 liste.push({
                     cle: iso(mois).substring(0, 7),
-                    libelle: deux(mois.getMonth() + 1) + "/" + String(mois.getFullYear()).slice(2)
+                    libelle: deux(mois.getMonth() + 1) + "/" + String(mois.getFullYear()).slice(2),
+                    detail: NOMS_MOIS[mois.getMonth()] + " " + mois.getFullYear()
                 });
             }
         } else {
@@ -885,7 +904,7 @@
                 if (annee && annee < anneeMin) anneeMin = annee;
             });
             for (var a = anneeMin; a <= aujourdhui.getFullYear(); a++) {
-                liste.push({ cle: String(a), libelle: String(a) });
+                liste.push({ cle: String(a), libelle: String(a), detail: "Année " + a });
             }
         }
 
@@ -936,12 +955,19 @@
         document.getElementById("stat-mouvements").textContent = totalM;
         document.getElementById("stat-operations").textContent = totalO;
         document.getElementById("stat-total-stats").textContent = totalM + totalO;
-        document.getElementById("periode-stats").textContent = {
-            jour: "7 derniers jours",
+
+        var basePeriode = {
+            jour: "Cette semaine",
             semaine: "8 dernières semaines",
             mois: "12 derniers mois",
             annee: "Toutes les années enregistrées"
         }[grainStats];
+
+        if (grainStats === "jour" && tranches.length > 1) {
+            basePeriode += "  ·  du " + tranches[0].sousLibelle + " au " + tranches[tranches.length - 1].sousLibelle;
+        }
+
+        document.getElementById("periode-stats").textContent = basePeriode;
 
         var graphique = document.getElementById("graphique");
         graphique.innerHTML = "";
@@ -958,7 +984,7 @@
         var margeGauche = 30;
         var margeDroite = 10;
         var margeHaut = 14;
-        var margeBas = 26;
+        var margeBas = 38;
         var utileLargeur = largeur - margeGauche - margeDroite;
         var utileHauteur = hauteur - margeHaut - margeBas;
         var pas = tranches.length > 1 ? utileLargeur / (tranches.length - 1) : 0;
@@ -1018,8 +1044,18 @@
             }
 
             if (i % saut === 0) {
-                morceaux.push('<text x="' + x.toFixed(1) + '" y="' + (hauteur - 8) +
-                    '" text-anchor="middle" font-size="9" fill="#6A7B88">' + t.libelle + "</text>");
+                var couleurLibelle = t.aujourdhui ? "#1C2A35" : "#6A7B88";
+                var graisse = t.aujourdhui ? ' font-weight="600"' : "";
+                var ligne1 = hauteur - (t.sousLibelle ? 22 : 10);
+
+                morceaux.push('<text data-label="1" x="' + x.toFixed(1) + '" y="' + ligne1 +
+                    '" text-anchor="middle" font-size="9" fill="' + couleurLibelle + '"' + graisse + ">" +
+                    t.libelle + "</text>");
+
+                if (t.sousLibelle) {
+                    morceaux.push('<text data-label="1" x="' + x.toFixed(1) + '" y="' + (hauteur - 10) +
+                        '" text-anchor="middle" font-size="8" fill="#8A99A5">' + t.sousLibelle + "</text>");
+                }
             }
 
             var largeurZone = tranches.length > 1 ? pas : utileLargeur;
@@ -1034,12 +1070,24 @@
         var svg = zone.querySelector("svg");
         if (!svg) return;
 
+        // Recale les libellés qui déborderaient du cadre (premier et dernier jour).
+        var etiquettes = svg.querySelectorAll("[data-label]");
+        for (var e = 0; e < etiquettes.length; e++) {
+            var boite = etiquettes[e].getBBox();
+            var decalage = 0;
+            if (boite.x < 2) decalage = 2 - boite.x;
+            else if (boite.x + boite.width > largeur - 2) decalage = (largeur - 2) - (boite.x + boite.width);
+            if (decalage) {
+                etiquettes[e].setAttribute("x", (Number(etiquettes[e].getAttribute("x")) + decalage).toFixed(1));
+            }
+        }
+
         svg.addEventListener("click", function (evenement) {
             var cible = evenement.target.closest("[data-index]");
             if (!cible) return;
             var t = tranches[Number(cible.getAttribute("data-index"))];
             if (!t) return;
-            afficherToast(t.libelle + "  ·  " + t.mouvements + " mouvement(s)  ·  " +
+            afficherToast((t.detail || t.libelle) + "  ·  " + t.mouvements + " mouvement(s)  ·  " +
                 t.operations + " opération(s)");
         });
     }

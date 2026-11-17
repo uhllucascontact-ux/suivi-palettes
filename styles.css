@@ -26,15 +26,14 @@ html, body {
     -webkit-text-size-adjust: 100%;
 }
 
-html { height: 100%; }
+html { height: 100%; background: #FFFFFF; }
 
 /* Mise en page pleine hauteur : seul <main> défile, le menu reste collé en bas
    quel que soit le contenu de l'onglet (comportement iOS compris). */
 body {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    height: 100dvh;
+    height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
 }
@@ -537,17 +536,16 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
     position: relative;
     z-index: 30;
     display: flex;
-    background: rgba(255, 255, 255, .97);
+    background: #FFFFFF;
     border-top: 1px solid var(--bordure);
     padding-bottom: env(safe-area-inset-bottom);
-    backdrop-filter: blur(8px);
 }
 
 .onglets button {
     flex: 1;
     border: none;
     background: transparent;
-    padding: 8px 0 10px;
+    padding: 6px 0 8px;
     font-family: inherit;
     font-size: 10px;
     font-weight: 600;
