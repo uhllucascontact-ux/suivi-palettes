@@ -4,6 +4,12 @@ Version web de test, à ouvrir dans Safari sur l'iPhone. Elle reprend l'écran d
 l'historique, une liste de tâches, des opérations rapides (+1), des statistiques par
 jour/semaine/mois/année et l'envoi du relevé par mail (Gmail ou Mail).
 
+## Statistiques
+
+Onglet Stats : courbes des mouvements (ambre) et des opérations (bleu), par jour
+(7 derniers jours), par semaine (8 dernières semaines), par mois (12 derniers mois) ou par
+année. Toucher une zone de la courbe affiche les valeurs de la période.
+
 ## Opérations rapides
 
 Sept boutons « +1 » sur l'écran Saisir : palettes vides, benne ferraille, rehausses, chutes,

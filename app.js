@@ -7,7 +7,7 @@
     var CLE = "suiviPalettes.v1";
     var CLE_TACHES = "suiviTaches.v1";
     var CLE_OPERATIONS = "suiviOperations.v1";
-    var VERSION = 17;
+    var VERSION = 19;
 
     var TYPES_OPERATIONS = ["Palettes vides", "Benne ferraille", "Rehausses", "Chutes",
         "Ferraille", "Bennes copeaux", "Bois"];
@@ -945,42 +945,103 @@
 
         var graphique = document.getElementById("graphique");
         graphique.innerHTML = "";
+        document.getElementById("graphique-vide").classList.toggle("cache", totalM + totalO > 0);
 
-        tranches.forEach(function (t) {
-            var colonne = document.createElement("button");
-            colonne.type = "button";
-            colonne.className = "colonne";
-            colonne.title = t.libelle + " : " + t.mouvements + " mouvement(s), " + t.operations + " opération(s)";
-            colonne.addEventListener("click", function () {
-                afficherToast(t.libelle + "  ·  " + t.mouvements + " mouvement(s)  ·  " + t.operations + " opération(s)");
-            });
+        if (totalM + totalO > 0) dessinerCourbe(tranches, max);
+    }
 
-            var barres = document.createElement("div");
-            barres.className = "barres";
+    /* Courbes : une ligne par série, grille légère, points aux valeurs non nulles. */
+    function dessinerCourbe(tranches, max) {
+        var zone = document.getElementById("graphique");
+        var largeur = Math.max(300, Math.round(zone.clientWidth || 320));
+        var hauteur = 200;
+        var margeGauche = 30;
+        var margeDroite = 10;
+        var margeHaut = 14;
+        var margeBas = 26;
+        var utileLargeur = largeur - margeGauche - margeDroite;
+        var utileHauteur = hauteur - margeHaut - margeBas;
+        var pas = tranches.length > 1 ? utileLargeur / (tranches.length - 1) : 0;
 
-            var mouvements = document.createElement("div");
-            mouvements.className = "barre" + (t.mouvements ? "" : " vide");
-            mouvements.style.height = (t.mouvements ? Math.max(4, Math.round(t.mouvements / max * 100)) : 3) + "%";
-            mouvements.title = t.libelle + " : " + t.mouvements + " mouvement(s)";
+        function posX(i) {
+            return tranches.length > 1 ? margeGauche + i * pas : margeGauche + utileLargeur / 2;
+        }
 
-            var operationsBarre = document.createElement("div");
-            operationsBarre.className = "barre operations" + (t.operations ? "" : " vide");
-            operationsBarre.style.height = (t.operations ? Math.max(4, Math.round(t.operations / max * 100)) : 3) + "%";
-            operationsBarre.title = t.libelle + " : " + t.operations + " opération(s)";
+        function posY(valeur) {
+            return margeHaut + utileHauteur - (valeur / max) * utileHauteur;
+        }
 
-            barres.appendChild(mouvements);
-            barres.appendChild(operationsBarre);
+        var morceaux = [];
+        morceaux.push('<svg viewBox="0 0 ' + largeur + " " + hauteur + '" width="' + largeur +
+            '" height="' + hauteur + '" role="img" aria-label="Évolution des mouvements et des opérations">');
 
-            var etiquette = document.createElement("span");
-            etiquette.className = "etiquette-colonne";
-            etiquette.textContent = t.libelle;
-
-            colonne.appendChild(barres);
-            colonne.appendChild(etiquette);
-            graphique.appendChild(colonne);
+        [0, 0.25, 0.5, 0.75, 1].forEach(function (part) {
+            var y = margeHaut + utileHauteur * (1 - part);
+            morceaux.push('<line x1="' + margeGauche + '" y1="' + y.toFixed(1) + '" x2="' +
+                (largeur - margeDroite) + '" y2="' + y.toFixed(1) +
+                '" stroke="#E7EDF1" stroke-width="1" />');
         });
 
-        document.getElementById("graphique-vide").classList.toggle("cache", totalM + totalO > 0);
+        var dejaAffiche = {};
+        [max, Math.round(max / 2), 0].forEach(function (valeur) {
+            if (dejaAffiche[valeur]) return;
+            dejaAffiche[valeur] = true;
+            morceaux.push('<text x="' + (margeGauche - 6) + '" y="' + (posY(valeur) + 3.5).toFixed(1) +
+                '" text-anchor="end" font-size="9" fill="#8A99A5">' + valeur + "</text>");
+        });
+
+        function trace(valeurs, couleur) {
+            var d = valeurs.map(function (valeur, i) {
+                return (i ? "L" : "M") + posX(i).toFixed(1) + " " + posY(valeur).toFixed(1);
+            }).join(" ");
+            morceaux.push('<path d="' + d + '" fill="none" stroke="' + couleur +
+                '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />');
+        }
+
+        // Les opérations d'abord, les mouvements par-dessus : la série principale reste visible
+        // même quand les deux valeurs sont identiques.
+        trace(tranches.map(function (t) { return t.operations; }), "#3A7CA5");
+        trace(tranches.map(function (t) { return t.mouvements; }), "#E09B2D");
+
+        var saut = tranches.length > 8 ? 2 : 1;
+
+        tranches.forEach(function (t, i) {
+            var x = posX(i);
+
+            if (t.operations > 0) {
+                morceaux.push('<circle cx="' + x.toFixed(1) + '" cy="' + posY(t.operations).toFixed(1) +
+                    '" r="2.6" fill="#3A7CA5" />');
+            }
+            if (t.mouvements > 0) {
+                morceaux.push('<circle cx="' + x.toFixed(1) + '" cy="' + posY(t.mouvements).toFixed(1) +
+                    '" r="2.6" fill="#E09B2D" />');
+            }
+
+            if (i % saut === 0) {
+                morceaux.push('<text x="' + x.toFixed(1) + '" y="' + (hauteur - 8) +
+                    '" text-anchor="middle" font-size="9" fill="#6A7B88">' + t.libelle + "</text>");
+            }
+
+            var largeurZone = tranches.length > 1 ? pas : utileLargeur;
+            morceaux.push('<rect class="zone-tactile" x="' + (x - largeurZone / 2).toFixed(1) +
+                '" y="' + margeHaut + '" width="' + largeurZone.toFixed(1) + '" height="' + utileHauteur +
+                '" fill="transparent" data-index="' + i + '" />');
+        });
+
+        morceaux.push("</svg>");
+        zone.innerHTML = morceaux.join("");
+
+        var svg = zone.querySelector("svg");
+        if (!svg) return;
+
+        svg.addEventListener("click", function (evenement) {
+            var cible = evenement.target.closest("[data-index]");
+            if (!cible) return;
+            var t = tranches[Number(cible.getAttribute("data-index"))];
+            if (!t) return;
+            afficherToast(t.libelle + "  ·  " + t.mouvements + " mouvement(s)  ·  " +
+                t.operations + " opération(s)");
+        });
     }
 
     // ---------------------------------------------------------------- données / export
@@ -1350,6 +1411,14 @@
         rendreDonnees();
         majHorloge();
         setInterval(majHorloge, 1000);
+
+        var redimensionnement = null;
+        window.addEventListener("resize", function () {
+            clearTimeout(redimensionnement);
+            redimensionnement = setTimeout(function () {
+                if (!document.getElementById("vue-stats").classList.contains("cache")) rendreStatistiques();
+            }, 200);
+        });
 
         if ("serviceWorker" in navigator) {
             var avaitControleur = !!navigator.serviceWorker.controller;

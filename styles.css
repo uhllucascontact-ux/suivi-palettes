@@ -368,48 +368,13 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 .pastille.operations { background: #3A7CA5; margin-left: 8px; }
 
 .graphique {
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-    height: 152px;
-    padding-top: 6px;
-    overflow-x: auto;
+    width: 100%;
+    margin-top: 4px;
 }
 
-.colonne {
-    flex: 1 0 24px;
-    min-width: 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    border: none;
-    background: none;
-    padding: 0;
-    font-family: inherit;
-}
+.graphique svg { display: block; width: 100%; height: auto; }
 
-.barres {
-    display: flex;
-    align-items: flex-end;
-    gap: 3px;
-    height: 122px;
-}
-
-.barre {
-    width: 9px;
-    border-radius: 3px 3px 0 0;
-    background: var(--accent);
-}
-
-.barre.operations { background: #3A7CA5; }
-.barre.vide { background: #E7EDF1; }
-
-.etiquette-colonne {
-    font-size: 9px;
-    color: var(--doux);
-    white-space: nowrap;
-}
+.zone-tactile { cursor: pointer; }
 
 /* ============ Opérations rapides ============ */
 .grille-operations {
