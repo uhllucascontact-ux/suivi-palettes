@@ -285,6 +285,36 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 .element .horaire { font-size: 11px; color: var(--doux); font-variant-numeric: tabular-nums; }
 .element .trajet { font-size: 16px; font-weight: 600; margin: 2px 0; }
 .element .details { font-size: 12px; color: var(--doux); }
+
+/* Engin : une couleur par machine, pour repérer d'un coup d'œil. */
+.badge-engin {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    border: 1px solid transparent;
+}
+
+.badge-engin.baumann {
+    color: #8A5A00;
+    background: #FDF1DA;
+    border-color: #EACB88;
+}
+
+.badge-engin.fenwick {
+    color: #1F5A7A;
+    background: #E4EFF6;
+    border-color: #A8C8DB;
+}
+
+.mention-modif {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-fonce);
+}
 .element .commentaire { font-size: 12px; color: #8A6A22; margin-top: 3px; }
 .element .marque-modif { font-size: 10px; color: var(--accent-fonce); font-weight: 700; }
 
@@ -548,6 +578,18 @@ select.champ { appearance: none; background-image: linear-gradient(45deg, transp
 }
 
 .feuille-entete h2 { margin: 0; font-size: 17px; font-weight: 600; }
+
+.feuille-actions { display: flex; align-items: center; gap: 6px; }
+
+.lien-entete {
+    border: none;
+    background: none;
+    color: var(--danger);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 6px;
+}
 
 .fermer {
     border: none;

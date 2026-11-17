@@ -1,6 +1,6 @@
 /* Cache local : permet d'ouvrir l'application sans réseau après la première visite. */
 
-var CACHE = "suivi-palettes-v6";
+var CACHE = "suivi-palettes-v11";
 var FICHIERS = [
     "./",
     "./index.html",

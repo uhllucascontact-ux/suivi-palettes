@@ -158,15 +158,20 @@
     // ---------------------------------------------------------------- feuille
 
     var fermerFeuilleCallback = null;
+    var actionRetirer = null;
 
-    function ouvrirFeuille(titre, construireContenu) {
+    function ouvrirFeuille(titre, construireContenu, surRetirer) {
         document.getElementById("feuille-titre").textContent = titre;
+        actionRetirer = surRetirer || null;
+        document.getElementById("feuille-retirer").classList.toggle("cache", !surRetirer);
+
         var contenu = document.getElementById("feuille-contenu");
         contenu.innerHTML = "";
         construireContenu(contenu);
 
         document.getElementById("voile").classList.remove("cache");
         document.getElementById("feuille").classList.remove("cache");
+        contenu.scrollTop = 0;
     }
 
     function fermerFeuille() {
@@ -180,6 +185,14 @@
     }
 
     function choisirLieu(titre, exclu, actuel, surChoix) {
+        // Permet d'annuler un choix fait par erreur, sans être obligé de choisir autre chose.
+        var retirer = actuel
+            ? function () {
+                fermerFeuille();
+                surChoix(null);
+            }
+            : null;
+
         ouvrirFeuille(titre, function (contenu) {
             var liste = document.createElement("div");
             liste.className = "liste-lieux";
@@ -208,7 +221,7 @@
             annuler.textContent = "Annuler";
             annuler.addEventListener("click", fermerFeuille);
             contenu.appendChild(annuler);
-        });
+        }, retirer);
     }
 
     // ---------------------------------------------------------------- saisie
@@ -278,13 +291,23 @@
         var debut = debutPeriode();
         var texte = recherche.trim().toLowerCase();
 
-        return trierRecents(donnees.mouvements.filter(function (m) {
-            if (jourDe(m.ts) < debut) return false;
-            if (!texte) return true;
-            var tout = (m.depart + " " + m.arrivee + " " + m.engin + " " + (m.commentaire || "") +
-                " " + dateLisible(m.ts)).toLowerCase();
-            return tout.indexOf(texte) >= 0;
-        }));
+        var retenus = donnees.mouvements.map(function (m, index) { return { m: m, index: index }; })
+            .filter(function (x) {
+                var m = x.m;
+                if (jourDe(m.ts) < debut) return false;
+                if (!texte) return true;
+                var tout = (m.depart + " " + m.arrivee + " " + m.engin + " " + (m.commentaire || "") +
+                    " " + dateLisible(m.ts)).toLowerCase();
+                return tout.indexOf(texte) >= 0;
+            });
+
+        // Plus récent d'abord ; à timestamp égal, le dernier saisi passe devant.
+        retenus.sort(function (a, b) {
+            if (a.m.ts !== b.m.ts) return a.m.ts < b.m.ts ? 1 : -1;
+            return b.index - a.index;
+        });
+
+        return retenus.map(function (x) { return x.m; });
     }
 
     /* Regroupe les opérations du même type et de la même heure : « Bennes copeaux ×3 · 14 h ». */
@@ -293,14 +316,15 @@
         var texte = recherche.trim().toLowerCase();
         var groupes = {};
 
-        operations.elements.forEach(function (o) {
+        operations.elements.forEach(function (o, index) {
             if (jourDe(o.ts) < debut) return;
             if (texte && (o.type + " " + dateLisible(o.ts)).toLowerCase().indexOf(texte) < 0) return;
 
             var cle = o.type + "|" + o.ts.substring(0, 13);
-            if (!groupes[cle]) groupes[cle] = { type: o.type, ts: o.ts, elements: [] };
+            if (!groupes[cle]) groupes[cle] = { type: o.type, ts: o.ts, elements: [], ordre: index };
             groupes[cle].elements.push(o);
             if (o.ts > groupes[cle].ts) groupes[cle].ts = o.ts;
+            if (index > groupes[cle].ordre) groupes[cle].ordre = index;
         });
 
         return Object.keys(groupes).map(function (cle) {
@@ -314,14 +338,17 @@
         var elements = [];
 
         mouvementsFiltres().forEach(function (m) {
-            elements.push({ genre: "mouvement", ts: m.ts, mouvement: m });
+            elements.push({ genre: "mouvement", ts: m.ts, ordre: donnees.mouvements.indexOf(m), mouvement: m });
         });
 
         operationsRegroupees().forEach(function (groupe) {
-            elements.push({ genre: "operations", ts: groupe.ts, groupe: groupe });
+            elements.push({ genre: "operations", ts: groupe.ts, ordre: groupe.ordre, groupe: groupe });
         });
 
-        return elements.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
+        return elements.sort(function (a, b) {
+            if (a.ts !== b.ts) return a.ts < b.ts ? 1 : -1;
+            return b.ordre - a.ordre;
+        });
     }
 
     function rendreHistorique() {
@@ -357,7 +384,18 @@
 
         var details = document.createElement("div");
         details.className = "details";
-        details.textContent = m.engin + (estModifie(m) ? "  ·  modifié" : "");
+
+        var badge = document.createElement("span");
+        badge.className = "badge-engin " + (m.engin === "FENWICK" ? "fenwick" : "baumann");
+        badge.textContent = m.engin;
+        details.appendChild(badge);
+
+        if (estModifie(m)) {
+            var modifie = document.createElement("span");
+            modifie.className = "mention-modif";
+            modifie.textContent = "modifié";
+            details.appendChild(modifie);
+        }
 
         corps.appendChild(horaire);
         corps.appendChild(trajet);
@@ -1025,7 +1063,7 @@
         document.getElementById("sel-depart").addEventListener("click", function () {
             choisirLieu("Lieu de départ", saisie.arrivee, saisie.depart, function (lieu) {
                 saisie.depart = lieu;
-                if (saisie.arrivee === lieu) saisie.arrivee = null;
+                if (lieu && saisie.arrivee === lieu) saisie.arrivee = null;
                 rendreSaisie();
             });
         });
@@ -1070,6 +1108,9 @@
 
         document.getElementById("voile").addEventListener("click", fermerFeuille);
         document.getElementById("feuille-fermer").addEventListener("click", fermerFeuille);
+        document.getElementById("feuille-retirer").addEventListener("click", function () {
+            if (actionRetirer) actionRetirer();
+        });
 
         document.getElementById("export-periode").addEventListener("change", majApercuExport);
         document.getElementById("btn-exporter").addEventListener("click", function () { exporter(true); });
